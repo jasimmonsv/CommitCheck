@@ -5,18 +5,17 @@ Created on Jul 2, 2013
 Program will crawl through a given file directory and look for git comment strings and flag them.
 '''
 
-import os
-import shutil
-import re
+import os, shutil, re, datetime, time
 versionNum = 1
 startPath = os.getcwd()
-changeFiles = 0
+crawlPath = 'C:\Program Files\Loansoft'
 totalFiles = 0
-print "Scanning..."
-pattern = re.compile(r"<<<<")
 
-with open('./commentLog.txt', 'w') as commentLog:
-	for root, dirs, files in os.walk('C:\Program Files\Loansoft'):
+startTime = datetime.datetime.now()
+pattern = re.compile(r"<<<<")
+print "Scanning..."
+with open('./commentLog.txt', 'a') as commentLog:
+	for root, dirs, files in os.walk(crawlPath):
 		for e in files:
 			totalFiles = totalFiles+1
 			with open(os.path.join(root,e),'r') as f:
@@ -25,6 +24,10 @@ with open('./commentLog.txt', 'w') as commentLog:
 			target = pattern.search(rData)
 			if target: commentLog.write(os.path.join(root,e)+'\n')
 	commentLog.close()
-            
-print totalFiles
+
+endTime = datetime.datetime.now()
+with open('./commentLog.txt', 'a') as commentLog:
+    commentLog.write('Duration: '+str(endTime-startTime)+'\n')
+    commentLog.write('Files scanned: '+str(totalFiles)+'\n')
+    commentLog.close()
 print "Done!"
