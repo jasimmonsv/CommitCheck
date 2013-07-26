@@ -5,29 +5,54 @@ Created on Jul 2, 2013
 Program will crawl through a given file directory and look for git comment strings and flag them.
 '''
 
-import os, shutil, re, datetime, time
+import os, shutil, re, datetime, time, threading, Queue
 versionNum = 1
 startPath = os.getcwd()
 crawlPath = 'C:\Program Files\Loansoft'
 totalFiles = 0
-
-startTime = datetime.datetime.now()
+threadCount = 5
+dirtyFiles = []
+queueFiles=[]
 pattern = re.compile(r"<<<<")
-print "Scanning..."
-with open('./commentLog.txt', 'a') as commentLog:
+queue = Queue.Queue()
+
+class ThreadClass(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.queue=queue
+
+    def run(self):
+        while True:
+            file=self.queue.get()
+            with open(file,'r') as f:
+                rData = f.read()
+            f.close()
+            target = pattern.search(rData)
+            if target: dirtyFiles.append(file)
+            self.queue.task_done()
+	
+def main():
 	for root, dirs, files in os.walk(crawlPath):
 		for e in files:
-			totalFiles = totalFiles+1
-			with open(os.path.join(root,e),'r') as f:
-				rData = f.read()
-			f.close()
-			target = pattern.search(rData)
-			if target: commentLog.write(os.path.join(root,e)+'\n')
-	commentLog.close()
-
+			if root.find('.git') == -1: queue.put(os.path.join(root,e))
+	print 'Total files: '+str(queue.qsize())
+	
+	for i in range(threadCount):
+		t=ThreadClass(queue)
+		t.setDaemon(True)
+		t.start()
+	
+	queue.join()
+	
+print "Scanning..."
+startTime = datetime.datetime.now()
+main()
 endTime = datetime.datetime.now()
+print "Writing log...\n"
 with open('./commentLog.txt', 'a') as commentLog:
+    for i in range(len(dirtyFiles)):
+	    commentLog.write(dirtyFiles[i]+'\n')
     commentLog.write('Duration: '+str(endTime-startTime)+'\n')
-    commentLog.write('Files scanned: '+str(totalFiles)+'\n')
     commentLog.close()
+print "Elapsed Time: %s" % (endTime-startTime)
 print "Done!"
